@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interceptor Wing & Fin Geometry Explorer — Orthographic Isometric 3D</title>
+  <meta name="description" content="Interactive 3D orthographic isometric explorer comparing flight-proven C-UAS and transonic micro-missile wing, strake, canard, wrap-around fin, and interdigitated tail topologies." />
+  <meta property="og:title" content="Transonic Interceptor Wing & Fin Geometry Explorer" />
+  <meta property="og:description" content="Interactive orthographic isometric 3D explorer for C-UAS & micro-missile aerodynamic topologies (Strake-Tail, Canard, Mid-Slot + WATF, Clipped-Delta, Switchblade, and 45° Interdigitated Synthesis)." />
+  <meta property="og:type" content="website" />
+  <style>
+    :root, [data-theme="dark"] {
+      --bg: #0b101b;
+      --surface: #121a2b;
+      --surface-2: #182338;
+      --border: #263552;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #ea580c;
+      --primary-fg: #ffffff;
+      --secondary: #1e293b;
+      --grid: rgba(148, 163, 184, 0.08);
+      --fuselage: #334155;
+      --fuselage-aft: #1e293b;
+      --fin-stroke: rgba(255, 255, 255, 0.36);
+      --body-stroke: rgba(15, 23, 42, 0.34);
+      --bore-ring: rgba(96, 165, 250, 0.70);
+      --bore-text: #93c5fd;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-2: #f1f5f9;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #ea580c;
+      --primary-fg: #ffffff;
+      --secondary: #e2e8f0;
+      --grid: rgba(100, 116, 139, 0.13);
+      --fuselage: #273244;
+      --fuselage-aft: #1e293b;
+      --fin-stroke: rgba(15, 23, 42, 0.58);
+      --body-stroke: rgba(15, 23, 42, 0.24);
+      --bore-ring: rgba(37, 99, 235, 0.65);
+      --bore-text: #1d4ed8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .shell {
+      max-width: 1240px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 20px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-eyebrow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.14s ease;
+      font-family: inherit;
+    }
+
+    button:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    button.active-tab {
+      background: var(--primary);
+      color: var(--primary-fg);
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+
+    button.active-preset {
+      background: var(--surface-2);
+      color: var(--text);
+      border-color: var(--text);
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .tab-group, .preset-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-pill:hover { color: var(--text); }
+    .toggle-pill input { accent-color: var(--primary); cursor: pointer; }
+
+    .viewport-card {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 450px;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    canvas:active { cursor: grabbing; }
+
+    @media (max-width: 720px) {
+      canvas { height: 330px; }
+    }
+
+    .hud-top-left {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      pointer-events: none;
+      max-width: 68%;
+    }
+
+    .hud-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: var(--primary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .hud-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    .hud-sub {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .hud-top-right {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      opacity: 0.92;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .hud-bottom-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .deflect-box {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0.95;
+    }
+
+    .deflect-box input[type="range"] {
+      width: 110px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hint-badge {
+      font-size: 11.5px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      opacity: 0.88;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 12px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 4px;
+    }
+
+    .notes-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 9px;
+      padding: 13px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .notes-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+
+    .notes-body {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      padding-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="brand-eyebrow">Aerodynamic Trade Explorer • ~Mach 1.0 Regime</div>
+        <h1>Interceptor Wing &amp; Fin Geometry Explorer</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-share" title="Copy deep link to current configuration">Copy Link</button>
+        <button id="btn-theme" title="Toggle Dark / Light blueprint theme">Light Mode</button>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div id="tabs" class="tab-group"></div>
+      <div class="preset-group">
+        <button id="view-iso" class="active-preset">Iso 3D</button>
+        <button id="view-front">Axial Clock</button>
+        <button id="view-top">Planform</button>
+        <button id="view-side">Profile</button>
+        <label class="toggle-pill">
+          <input id="toggle-wake" type="checkbox" checked />
+          <span>Wake</span>
+        </label>
+        <label class="toggle-pill">
+          <input id="toggle-bore" type="checkbox" />
+          <span>Tube Bore</span>
+        </label>
+        <label class="toggle-pill">
+          <input id="toggle-spin" type="checkbox" />
+          <span>Spin</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="viewport-card">
+      <canvas id="isoCanvas"></canvas>
+
+      <div class="hud-top-left">
+        <div id="cfg-tag" class="hud-tag"></div>
+        <div id="cfg-title" class="hud-title"></div>
+        <div id="cfg-sub" class="hud-sub"></div>
+      </div>
+
+      <div class="hud-top-right">
+        <div class="legend-row">
+          <span><span class="swatch" style="background:#e64f0d"></span>Active Control (CAS)</span>
+          <span><span class="swatch" style="background:#647d98"></span>Passive Lift / Fin</span>
+        </div>
+      </div>
+
+      <div class="hud-bottom-bar">
+        <div class="deflect-box">
+          <span>CAS Deflection</span>
+          <input id="slider-deflect" type="range" min="-20" max="20" step="1" value="0" />
+          <span id="readout-deflect" class="mono" style="min-width:34px;color:var(--text)">0°</span>
+          <button id="btn-zero" style="padding:2px 7px;font-size:11px">Zero</button>
+        </div>
+        <div class="hint-badge mono">Drag to orbit • Scroll to zoom • Keys 1–6</div>
+      </div>
+    </div>
+
+    <div id="metrics" class="metrics-grid"></div>
+
+    <div class="notes-card">
+      <div class="notes-label mono">Transonic (~Mach 0.85–1.20) Aerodynamic &amp; Packaging Takeaway</div>
+      <div id="cfg-note" class="notes-body"></div>
+    </div>
+
+    <footer>
+      True Orthographic 3D Projection • Unified Mechanics Aerospace Reference
+    </footer>
+  </div>
+
+  <script>
+    const CONFIGS = [
+      {
+        id: "01",
+        short: "01 Strake-Tail",
+        tag: "Archetype 01 // Wingless Strake-Tail STT",
+        title: "Long-Chord Body Strakes + Pop-Out '×' Tail CAS",
+        sub: "Fielded Exemplars: RTX Coyote Block 2 / 2C (FS-LIDS) • Mach 0.60–0.90+",
+        R: 0.056, L: 0.84, noseLen: 0.20, blunt: 0.28, boreR: 0.088,
+        fwd: { yLE: -0.13, cRoot: 0.39, cTip: 0.30, span: 0.026, sweep: 66, clocks: [45,135,225,315], active: false, hinge: 0.50 },
+        aft: { yLE: 0.30, cRoot: 0.092, cTip: 0.044, span: 0.090, sweep: 36, clocks: [45,135,225,315], active: true, curved: false, hinge: 0.40 },
+        stats: [
+          ["Primary Lift", "4× Body Strakes (AR 0.24)"],
+          ["LE Sweep / Taper", "66° Chine / λ = 0.77"],
+          ["Axial Clocking", "Co-Planar ×–× (0° off)"],
+          ["CAS Hinge Axis", "40% MAC Aft Tail"],
+          ["~Mach 1 Lesson", "0 wing hinges; high α taxes FOV"]
+        ],
+        note: "Eliminates mid-body wing deployment hinges entirely and relies on nonlinear vortex lift (CN ∝ α²) at α = 14°–20°. Ideal for RF/radar seekers, but high body angle-of-attack during 30G+ endgame turns pushes targets toward the edge of fixed strapdown optical/thermal seeker fields-of-view and raises sustained cruise drag."
+      },
+      {
+        id: "02",
+        short: "02 Fwd Canard",
+        tag: "Archetype 02 // Forward Canard Supersonic",
+        title: "Forward Active Delta Canards + Fixed Swept Tail",
+        sub: "Fielded Exemplars: LM MHTK • Rafael Tamir • Thales Martlet • Mach 1.50–2.20",
+        R: 0.044, L: 0.86, noseLen: 0.21, blunt: 0.12, boreR: 0.060,
+        fwd: { yLE: -0.22, cRoot: 0.080, cTip: 0.020, span: 0.066, sweep: 53, clocks: [0,90,180,270], active: true, hinge: 0.42 },
+        aft: { yLE: 0.28, cRoot: 0.132, cTip: 0.052, span: 0.094, sweep: 42, clocks: [45,135,225,315], active: false, curved: false, hinge: 0.50 },
+        stats: [
+          ["Control Surface", "4× Fwd '+' Clipped Deltas"],
+          ["LE Sweep", "53° Canard / 42° Tail"],
+          ["Axial Clocking", "45° Offset '+' Fwd / '×' Aft"],
+          ["Aft Packaging", "100% Full-Bore SRM Nozzle"],
+          ["~Mach 1 Lesson", "Frees nozzle; watch induced roll"]
+        ],
+        note: "Placing servos ahead of the rocket motor leaves the aft end 100% open for a full-diameter nozzle (zero blast-tube constriction) and produces minimum-phase positive lift on deflection. However, near Mach 1, forward canard tip vortices and shockwaves wash across the aft stabilizer, causing severe induced-roll reversal unless roll-stabilized or spinning."
+      },
+      {
+        id: "03",
+        short: "03 Slot + WATF",
+        tag: "Archetype 03 // Mid-Slot Wing + Wrap-Around Tail",
+        title: "Mid-Slot Guidance Wings + Curved Wrap-Around Tail",
+        sub: "Fielded Exemplars: BAE APKWS II (WGU-59/B 70mm) • Mach 1.20–2.40",
+        R: 0.042, L: 0.86, noseLen: 0.19, blunt: 0.04, boreR: 0.052,
+        fwd: { yLE: -0.12, cRoot: 0.088, cTip: 0.052, span: 0.088, sweep: 34, clocks: [0,90,180,270], active: true, hinge: 0.38 },
+        aft: { yLE: 0.32, cRoot: 0.094, cTip: 0.078, span: 0.090, sweep: 14, clocks: [45,135,225,315], active: false, curved: true, hinge: 0.50 },
+        stats: [
+          ["Control Surface", "4× Pop-Out '+' Slot Wings"],
+          ["Tail Geometry", "Curved Wrap-Around (WATF)"],
+          ["Tube Efficiency", "0% Internal Tail Intrusion"],
+          ["Transonic Hazard", "Mach 0.92–1.15 Roll Spike"],
+          ["~Mach 1 Lesson", "Avoid curved WATF for 3-axis STT"]
+        ],
+        note: "Curved Wrap-Around Tail Fins (WATF) conform to the outer motor tube with zero internal volume loss. However, across Mach 0.92–1.15, transonic shock asymmetry between the concave and convex fin faces triggers abrupt self-induced roll-moment reversal—acceptable on rolling proximity-fuzed rockets, but destabilizing for 3-axis Skid-to-Turn hit-to-kill."
+      },
+      {
+        id: "04",
+        short: "04 Clipped-Delta",
+        tag: "Archetype 04 // Transonic Clipped-Delta Dart",
+        title: "Low-AR Clipped-Delta Wing + All-Moving Delta Tail",
+        sub: "Fielded Exemplars: AV / BlueHalo Freedom Eagle-1 (FE-1) • CAMM • Mach 1.00–2.00+",
+        R: 0.052, L: 0.85, noseLen: 0.22, blunt: 0.08, boreR: 0.076,
+        fwd: { yLE: -0.05, cRoot: 0.255, cTip: 0.068, span: 0.082, sweep: 56, clocks: [0,90,180,270], active: false, hinge: 0.50 },
+        aft: { yLE: 0.30, cRoot: 0.105, cTip: 0.034, span: 0.084, sweep: 46, clocks: [0,90,180,270], active: true, curved: false, hinge: 0.40 },
+        stats: [
+          ["Primary Lift", "Low-AR Clipped Δ (AR 0.85)"],
+          ["LE Sweep / Taper", "56° Subsonic LE / λ = 0.27"],
+          ["Airfoil Section", "4.5% Symmetric Double-Wedge"],
+          ["CAS Hinge Axis", "40% MAC Transonic-Balanced"],
+          ["~Mach 1 Lesson", "Cuts wave drag, flutter & torque"]
+        ],
+        note: "Keeping leading-edge sweep Λ_LE > arccos(1/M) (> 45°) maintains a subsonic leading edge past Mach 1.2, slashing transonic wave drag. Clipping the delta tip (λ ≈ 0.25–0.35) suppresses high-q tip flutter, while placing the CAS spindle at ~40% MAC straddles the subsonic (25% MAC) to supersonic (45% MAC) CP shift, cutting peak servo torque nearly in half."
+      },
+      {
+        id: "05",
+        short: "05 Switchblade",
+        tag: "Archetype 05 // Direct-Lift Tube Switchblade",
+        title: "CG Switchblade '×' Wing + Co-Planar '×' Tail CAS",
+        sub: "Fielded Exemplars: Raytheon AGM-176B Griffin • Rafael Spike-LR2 • Mach 0.65–0.95",
+        R: 0.058, L: 0.79, noseLen: 0.15, blunt: 0.55, boreR: 0.064,
+        fwd: { yLE: -0.045, cRoot: 0.078, cTip: 0.046, span: 0.118, sweep: 22, clocks: [45,135,225,315], active: false, hinge: 0.30 },
+        aft: { yLE: 0.29, cRoot: 0.078, cTip: 0.048, span: 0.080, sweep: 24, clocks: [45,135,225,315], active: true, curved: false, hinge: 0.38 },
+        stats: [
+          ["Primary Lift", "CG Switchblade (AR ~2.5)"],
+          ["LE Sweep", "22° Moderate Subsonic"],
+          ["Axial Clocking", "Co-Planar ×–× (Wake-In-Line)"],
+          ["Seeker Pointing", "Direct Lift @ Low α"],
+          ["~Mach 1 Lesson", "Low-α lift; co-planar wake blanks tail"]
+        ],
+        note: "Centering deployable switchblade wings on X_CG generates immediate normal acceleration at low α (6°–10°), keeping evasive targets centered inside a fixed strapdown seeker FOV with zero trim-elevator drag penalty. Pushing past Mach 1 requires increasing wing sweep above 45°, slimming the blunt nose dome, and de-clocking the tail out of the wing wake."
+      },
+      {
+        id: "06",
+        short: "06 Synthesis",
+        tag: "Archetype 06 // Transonic Interdigitated Synthesis",
+        title: "50° Swept CG '×' Switchblade + 45°-Interdigitated '+' CAS",
+        sub: "Reference Transonic Synthesis • Canister-Launched 360° STT Hit-to-Kill • Mach 0.80–1.20",
+        R: 0.056, L: 0.78, noseLen: 0.22, blunt: 0.24, boreR: 0.060,
+        fwd: { yLE: -0.045, cRoot: 0.072, cTip: 0.032, span: 0.098, sweep: 50, clocks: [45,135,225,315], active: false, hinge: 0.35 },
+        aft: { yLE: 0.30, cRoot: 0.060, cTip: 0.036, span: 0.066, sweep: 30, clocks: [0,90,180,270], active: true, curved: false, hinge: 0.40 },
+        stats: [
+          ["Primary Lift", "50° Biconvex '×' Wing @ X_CG"],
+          ["Forebody OML", "3.8-Cal Tangent-Ogive + Dome"],
+          ["Axial Clocking", "45° Interdigitated ('×' / '+')"],
+          ["Tail Surfaces", "Flat Planar '+' Rotary CAS"],
+          ["~Mach 1 Lesson", "Low-α lift + clean freestream tail"]
+        ],
+        note: "Combines the low-α direct-lift kinematics of a CG switchblade ('×' at 45°/135°/225°/315°) with 50° supersonic leading-edge sweep, a low-wave-drag tangent-ogive forebody, flat non-WATF planar control blades balanced at ~40% MAC, and a 45°-interdigitated '+' tail (0°/90°/180°/270°) positioned cleanly between mid-wing vortex wakes."
+      }
+    ];
+
+    let activeIdx = 5;
+    let yaw = 53 * Math.PI / 180;
+    let pitch = 27.5 * Math.PI / 180;
+    let targetYaw = yaw, targetPitch = pitch;
+    let zoom = 1.0;
+    let deflectDeg = 0;
+    let showWake = true;
+    let showBore = false;
+    let autoSpin = false;
+    let currentPreset = "iso";
+    let dragging = false, lastX = 0, lastY = 0;
+
+    const canvas = document.getElementById("isoCanvas");
+    const ctx = canvas.getContext("2d");
+    const tabsEl = document.getElementById("tabs");
+    const metricsEl = document.getElementById("metrics");
+
+    // Parse URL hash state (#config=04&view=front)
+    function loadHash() {
+      const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const c = params.get("config");
+      if (c) {
+        const idx = CONFIGS.findIndex(x => x.id === c || String(CONFIGS.indexOf(x) + 1) === c);
+        if (idx >= 0) activeIdx = idx;
+      }
+      const v = params.get("view");
+      if (["iso", "front", "top", "side"].includes(v)) {
+        setPreset(v, true);
+      }
+    }
+
+    function syncHash() {
+      const id = CONFIGS[activeIdx].id;
+      history.replaceState(null, "", `#config=${id}&view=${currentPreset}`);
+    }
+
+    function renderUI() {
+      tabsEl.innerHTML = "";
+      CONFIGS.forEach((c, i) => {
+        const btn = document.createElement("button");
+        if (i === activeIdx) btn.className = "active-tab";
+        btn.textContent = c.short;
+        btn.onclick = () => { activeIdx = i; syncHash(); renderUI(); draw(); };
+        tabsEl.appendChild(btn);
+      });
+
+      const cfg = CONFIGS[activeIdx];
+      document.getElementById("cfg-tag").textContent = cfg.tag;
+      document.getElementById("cfg-title").textContent = cfg.title;
+      document.getElementById("cfg-sub").textContent = cfg.sub;
+      document.getElementById("cfg-note").textContent = cfg.note;
+
+      metricsEl.innerHTML = cfg.stats.map(([k, v]) => `
+        <div class="metric-card">
+          <div class="metric-label mono">${k}</div>
+          <div class="metric-value">${v}</div>
+        </div>
+      `).join("");
+    }
+
+    function setPreset(mode, instant = false) {
+      currentPreset = mode;
+      ["iso", "front", "top", "side"].forEach(m => {
+        document.getElementById("view-" + m).className = (m === mode) ? "active-preset" : "";
+      });
+      if (mode === "iso") { targetYaw = 53 * Math.PI / 180; targetPitch = 27.5 * Math.PI / 180; }
+      if (mode === "front") { targetYaw = 0.001; targetPitch = 0.001; }
+      if (mode === "top") { targetYaw = 90 * Math.PI / 180; targetPitch = 89.2 * Math.PI / 180; }
+      if (mode === "side") { targetYaw = 90 * Math.PI / 180; targetPitch = 0.001; }
+      syncHash();
+      if (instant) {
+        yaw = targetYaw; pitch = targetPitch; draw();
+      } else {
+        animateToTarget();
+      }
+    }
+
+    document.getElementById("view-iso").onclick = () => setPreset("iso");
+    document.getElementById("view-front").onclick = () => setPreset("front");
+    document.getElementById("view-top").onclick = () => setPreset("top");
+    document.getElementById("view-side").onclick = () => setPreset("side");
+
+    document.getElementById("toggle-wake").onchange = (e) => { showWake = e.target.checked; draw(); };
+    document.getElementById("toggle-bore").onchange = (e) => { showBore = e.target.checked; draw(); };
+    document.getElementById("toggle-spin").onchange = (e) => {
+      autoSpin = e.target.checked;
+      if (autoSpin) requestAnimationFrame(spinLoop);
+    };
+
+    const sliderDeflect = document.getElementById("slider-deflect");
+    const readoutDeflect = document.getElementById("readout-deflect");
+    sliderDeflect.oninput = (e) => {
+      deflectDeg = Number(e.target.value);
+      readoutDeflect.textContent = (deflectDeg > 0 ? "+" : "") + deflectDeg + "°";
+      draw();
+    };
+    document.getElementById("btn-zero").onclick = () => {
+      deflectDeg = 0;
+      sliderDeflect.value = "0";
+      readoutDeflect.textContent = "0°";
+      draw();
+    };
+
+    document.getElementById("btn-theme").onclick = (e) => {
+      const root = document.documentElement;
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      e.target.textContent = next === "dark" ? "Light Mode" : "Dark Mode";
+      draw();
+    };
+
+    document.getElementById("btn-share").onclick = (e) => {
+      syncHash();
+      navigator.clipboard?.writeText(window.location.href);
+      const orig = e.target.textContent;
+      e.target.textContent = "Copied URL!";
+      setTimeout(() => { e.target.textContent = orig; }, 1600);
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key >= "1" && e.key <= "6") {
+        activeIdx = Number(e.key) - 1;
+        syncHash(); renderUI(); draw();
+      }
+    });
+
+    let animId = null;
+    function animateToTarget() {
+      if (animId) cancelAnimationFrame(animId);
+      function step() {
+        const dy = targetYaw - yaw, dp = targetPitch - pitch;
+        if (Math.abs(dy) < 0.002 && Math.abs(dp) < 0.002) {
+          yaw = targetYaw; pitch = targetPitch; draw(); animId = null; return;
+        }
+        yaw += dy * 0.20; pitch += dp * 0.20;
+        draw();
+        animId = requestAnimationFrame(step);
+      }
+      step();
+    }
+
+    function spinLoop() {
+      if (!autoSpin) return;
+      if (!dragging) {
+        yaw += 0.008;
+        targetYaw = yaw;
+        draw();
+      }
+      requestAnimationFrame(spinLoop);
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      yaw += (e.clientX - lastX) * 0.009;
+      pitch = Math.max(-1.52, Math.min(1.52, pitch + (e.clientY - lastY) * 0.009));
+      targetYaw = yaw; targetPitch = pitch;
+      lastX = e.clientX; lastY = e.clientY;
+      draw();
+    });
+    canvas.addEventListener("pointerup", () => { dragging = false; });
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      zoom = Math.max(0.65, Math.min(1.95, zoom * (e.deltaY < 0 ? 1.07 : 0.93)));
+      draw();
+    }, { passive: false });
+
+    function project(x, y, z, cx, cy, scale) {
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw);
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const sx = x * cyw + y * syw;
+      const sy = -x * sp * syw + y * sp * cyw + z * cp;
+      const depth = x * cp * syw - y * cp * cyw + z * sp;
+      return { px: cx + sx * scale, py: cy - sy * scale, depth };
+    }
+
+    function rotClock(u, y, w, deg) {
+      const r = deg * Math.PI / 180;
+      return [u * Math.cos(r) + w * Math.sin(r), y, -u * Math.sin(r) + w * Math.cos(r)];
+    }
+
+    function deflectLocal(u, y, w, yHinge, deltaRad) {
+      const dy = y - yHinge;
+      const c = Math.cos(deltaRad), s = Math.sin(deltaRad);
+      return [u * c + dy * s, yHinge - u * s + dy * c, w];
+    }
+
+    function shadeHex(hex, factor) {
+      const n = parseInt(hex.slice(1), 16);
+      const r = Math.min(255, Math.round(((n >> 16) & 255) * factor));
+      const g = Math.min(255, Math.round(((n >> 8) & 255) * factor));
+      const b = Math.min(255, Math.round((n & 255) * factor));
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function draw() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const styles = getComputedStyle(document.documentElement);
+      const gridCol = styles.getPropertyValue("--grid").trim();
+      const fuselageCol = styles.getPropertyValue("--fuselage").trim();
+      const fuselageAftCol = styles.getPropertyValue("--fuselage-aft").trim();
+      const finStroke = styles.getPropertyValue("--fin-stroke").trim();
+      const bodyStroke = styles.getPropertyValue("--body-stroke").trim();
+      const boreRingCol = styles.getPropertyValue("--bore-ring").trim();
+      const boreTextCol = styles.getPropertyValue("--bore-text").trim();
+
+      // Orthographic engineering grid
+      ctx.strokeStyle = gridCol;
+      ctx.lineWidth = 1;
+      for (let gx = 28; gx < W; gx += 36) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+      for (let gy = 28; gy < H; gy += 36) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+      const cfg = CONFIGS[activeIdx];
+      const cx = W * 0.50, cy = H * 0.52;
+      const scale = Math.min(W * 0.72, H * 1.48) * zoom;
+
+      const faces = [];
+      const segs = 26;
+      const yNose = -cfg.L * 0.5, yTail = cfg.L * 0.5;
+      const rings = [];
+
+      const noseSteps = 11;
+      for (let i = 0; i <= noseSteps; i++) {
+        const t = i / noseSteps;
+        const y = yNose + t * cfg.noseLen;
+        const r = cfg.R * Math.pow(t, 0.62 - 0.25 * cfg.blunt);
+        rings.push({ y, r: i === 0 ? cfg.R * 0.16 * cfg.blunt : r, col: i < 2 ? "#0284c7" : fuselageCol });
+      }
+      rings.push({ y: yTail - 0.06, r: cfg.R, col: fuselageCol });
+      rings.push({ y: yTail, r: cfg.R * 0.78, col: fuselageAftCol });
+      rings.push({ y: yTail + 0.025, r: cfg.R * 0.52, col: "#111827" });
+
+      for (let ri = 0; ri < rings.length - 1; ri++) {
+        const r0 = rings[ri], r1 = rings[ri + 1];
+        for (let s = 0; s < segs; s++) {
+          const a0 = (2 * Math.PI * s) / segs, a1 = (2 * Math.PI * (s + 1)) / segs;
+          const p00 = [r0.r * Math.sin(a0), r0.y, r0.r * Math.cos(a0)];
+          const p01 = [r0.r * Math.sin(a1), r0.y, r0.r * Math.cos(a1)];
+          const p11 = [r1.r * Math.sin(a1), r1.y, r1.r * Math.cos(a1)];
+          const p10 = [r1.r * Math.sin(a0), r1.y, r1.r * Math.cos(a0)];
+          const shade = 0.70 + 0.30 * Math.cos(a0 - 0.65);
+          faces.push({ pts: [p00, p01, p11, p10], base: r0.col, shade, stroke: bodyStroke });
+        }
+      }
+
+      function addFinSet(fin) {
+        const dyTip = fin.span * Math.tan(fin.sweep * Math.PI / 180);
+        const col = fin.active ? "#e64f0d" : "#647d98";
+        const yHinge = fin.yLE + (fin.hinge || 0.40) * fin.cRoot;
+
+        fin.clocks.forEach(clk => {
+          // Pitch command sign based on lateral horizontal projection of fin axis
+          const pitchFactor = Math.sin(clk * Math.PI / 180);
+          const sign = Math.abs(pitchFactor) > 0.2 ? Math.sign(pitchFactor) : (Math.cos(clk * Math.PI / 180) >= 0 ? 1 : -1);
+          const dRad = fin.active ? (deflectDeg * Math.PI / 180) * sign : 0;
+
+          const xform = (u, y, w) => {
+            const [du, dy, dw] = dRad !== 0 ? deflectLocal(u, y, w, yHinge, dRad) : [u, y, w];
+            return rotClock(du, dy, dw, clk);
+          };
+
+          if (fin.curved) {
+            const steps = 7;
+            for (let s = 0; s < steps; s++) {
+              const t0 = s / steps, t1 = (s + 1) / steps;
+              const w0 = cfg.R + fin.span * t0, w1 = cfg.R + fin.span * t1;
+              const u0 = cfg.R * 0.46 * t0 * t0, u1 = cfg.R * 0.46 * t1 * t1;
+              const c0 = fin.cRoot + (fin.cTip - fin.cRoot) * t0;
+              const c1 = fin.cRoot + (fin.cTip - fin.cRoot) * t1;
+              const y0 = fin.yLE + dyTip * t0, y1 = fin.yLE + dyTip * t1;
+              faces.push({
+                pts: [xform(u0, y0, w0), xform(u1, y1, w1), xform(u1, y1 + c1, w1), xform(u0, y0 + c0, w0)],
+                base: col, shade: 0.96, stroke: finStroke
+              });
+            }
+          } else {
+            faces.push({
+              pts: [
+                xform(0, fin.yLE, cfg.R * 0.96),
+                xform(0, fin.yLE + dyTip, cfg.R + fin.span),
+                xform(0, fin.yLE + dyTip + fin.cTip, cfg.R + fin.span),
+                xform(0, fin.yLE + fin.cRoot, cfg.R * 0.96)
+              ],
+              base: col, shade: 0.96, stroke: finStroke
+            });
+          }
+        });
+      }
+
+      addFinSet(cfg.fwd);
+      addFinSet(cfg.aft);
+
+      const projected = faces.map(f => {
+        const p2 = f.pts.map(p => project(p[0], p[1], p[2], cx, cy, scale));
+        const depth = p2.reduce((acc, q) => acc + q.depth, 0) / p2.length;
+        return { ...f, p2, depth };
+      }).sort((a, b) => a.depth - b.depth);
+
+      projected.forEach(f => {
+        ctx.beginPath();
+        f.p2.forEach((p, idx) => idx === 0 ? ctx.moveTo(p.px, p.py) : ctx.lineTo(p.px, p.py));
+        ctx.closePath();
+        ctx.fillStyle = shadeHex(f.base, f.shade);
+        ctx.fill();
+        ctx.strokeStyle = f.stroke;
+        ctx.lineWidth = 0.9;
+        ctx.stroke();
+      });
+
+      // Vortex wake lanes
+      if (showWake) {
+        const coplanar = JSON.stringify(cfg.fwd.clocks) === JSON.stringify(cfg.aft.clocks);
+        cfg.fwd.clocks.forEach(clk => {
+          const rWake = cfg.R + cfg.fwd.span * 0.72;
+          const yStart = cfg.fwd.yLE + cfg.fwd.cRoot;
+          const pA = rotClock(0, yStart, rWake, clk);
+          const pB = rotClock(0, yTail + 0.04, rWake, clk);
+          const sA = project(pA[0], pA[1], pA[2], cx, cy, scale);
+          const sB = project(pB[0], pB[1], pB[2], cx, cy, scale);
+          ctx.save();
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = coplanar ? "rgba(239, 68, 68, 0.80)" : "rgba(16, 185, 129, 0.82)";
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(sA.px, sA.py);
+          ctx.lineTo(sB.px, sB.py);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      // Launch tube bore ring (3D cylinder rings or axial front ring)
+      if (showBore || (Math.abs(yaw) < 0.22 && Math.abs(pitch) < 0.22)) {
+        ctx.save();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = boreRingCol;
+        ctx.lineWidth = 1.6;
+        const boreSegs = 48;
+        [-cfg.L * 0.48, cfg.L * 0.48].forEach((yy, ringIdx) => {
+          if (!showBore && ringIdx === 1) return;
+          ctx.beginPath();
+          for (let i = 0; i <= boreSegs; i++) {
+            const a = (2 * Math.PI * i) / boreSegs;
+            const pt = project(cfg.boreR * Math.sin(a), yy, cfg.boreR * Math.cos(a), cx, cy, scale);
+            i === 0 ? ctx.moveTo(pt.px, pt.py) : ctx.lineTo(pt.px, pt.py);
+          }
+          ctx.stroke();
+        });
+        const lblPt = project(cfg.boreR * 1.04, -cfg.L * 0.48, 0, cx, cy, scale);
+        ctx.fillStyle = boreTextCol;
+        ctx.font = "11px ui-monospace, Menlo, monospace";
+        ctx.fillText("Stowed Canister Bore", lblPt.px + 4, lblPt.py - 4);
+        ctx.restore();
+      }
+
+      // Mini Isometric Triad bottom-left above bar
+      const triadX = 44, triadY = H - 68, axisLen = 0.075;
+      const o0 = project(0, 0, 0, triadX, triadY, scale);
+      const ox = project(axisLen, 0, 0, triadX, triadY, scale);
+      const oy = project(0, -axisLen, 0, triadX, triadY, scale);
+      const oz = project(0, 0, axisLen, triadX, triadY, scale);
+      const drawAxis = (to, col, txt) => {
+        ctx.strokeStyle = col; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(o0.px, o0.py); ctx.lineTo(to.px, to.py); ctx.stroke();
+        ctx.fillStyle = col; ctx.font = "10px ui-monospace, monospace";
+        ctx.fillText(txt, to.px + 3, to.py - 2);
+      };
+      drawAxis(oy, "#ef4444", "Nose");
+      drawAxis(oz, "#3b82f6", "+Z");
+      drawAxis(ox, "#10b981", "+R");
+    }
+
+    loadHash();
+    renderUI();
+    window.addEventListener("resize", draw);
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
